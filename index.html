@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Orbit Watch — Is anything hitting Earth today?</title>
+  <meta name="description" content="Live 3D tracker of every asteroid passing Earth today, powered by real NASA data." />
+  <meta property="og:title" content="Orbit Watch — Is anything hitting Earth today?" />
+  <meta property="og:description" content="Real asteroids. Real NASA data. Rendered live in 3D." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☄️</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js" defer></script>
+</head>
+<body>
+
+  <!-- Loading overlay -->
+  <div id="loader">
+    <div class="loader-inner">
+      <div class="radar"><div class="radar-sweep"></div><div class="radar-dot"></div></div>
+      <h1 class="loader-title">ORBIT WATCH</h1>
+      <p class="loader-sub" id="loader-status">Contacting NASA…</p>
+    </div>
+  </div>
+
+  <!-- 3D canvas mounts here -->
+  <div id="scene-container"></div>
+
+  <!-- Top verdict banner -->
+  <header id="banner" class="hidden">
+    <div class="banner-brand">☄️ ORBIT WATCH</div>
+    <div class="banner-center">
+      <div class="banner-question">Is anything hitting Earth today?</div>
+      <div class="banner-verdict" id="verdict">—</div>
+      <div class="banner-sub" id="verdict-sub"></div>
+    </div>
+    <a class="banner-source" id="data-source" href="https://api.nasa.gov" target="_blank" rel="noopener" title="This site pulls live data from NASA's public asteroid-tracking API">
+      <span class="dot"></span><span id="source-label">LIVE NASA DATA</span>
+    </a>
+  </header>
+
+  <!-- Help button -->
+  <button id="help-btn" class="hidden" title="What am I looking at?">?</button>
+
+  <!-- Floating actions -->
+  <div id="fab-stack" class="hidden">
+    <button id="today-btn" title="Space Today — sun, fireballs, watch list & more">🌞</button>
+    <button id="share-btn" title="Download today's status as an image">📸</button>
+    <button id="sound-btn" title="Sound on / off">🔊</button>
+  </div>
+
+  <!-- Left: launch countdown + satellite layers -->
+  <div id="left-stack" class="hidden">
+    <div id="launch-chip" class="side-chip hidden-hard">
+      <div class="launch-top" id="launch-label">🚀 —</div>
+      <div class="launch-mid" id="launch-rocket"></div>
+      <div class="launch-count" id="launch-count">T− …</div>
+    </div>
+    <div id="swarm-chip" class="side-chip hidden-hard">
+      <div class="chip-row">
+        <button id="swarm-toggle" class="chip-btn active">🛰️ Satellites</button>
+        <button id="india-toggle" class="chip-btn">🇮🇳 India</button>
+      </div>
+      <div class="chip-count" id="swarm-count"></div>
+    </div>
+  </div>
+
+  <!-- Space Today overlay -->
+  <div id="today" class="hidden-hard">
+    <div class="today-card">
+      <button id="today-close" aria-label="Close">✕</button>
+      <h2>🌞 Space, today</h2>
+      <div class="today-grid">
+        <section class="today-cell">
+          <h3>📷 NASA's picture of the day</h3>
+          <img id="apod-img" alt="Astronomy picture of the day" style="display:none" loading="lazy" />
+          <p id="apod-title" class="today-cap">Loading…</p>
+        </section>
+        <section class="today-cell">
+          <h3>🌍 Earth, photographed today</h3>
+          <img id="epic-img" alt="Earth from the DSCOVR satellite" style="display:none" loading="lazy" />
+          <p id="epic-cap" class="today-cap">Loading…</p>
+        </section>
+        <section class="today-cell">
+          <h3>☀️ Sun mood</h3>
+          <p class="today-big" id="sun-status">Checking…</p>
+          <p class="today-cap" id="sun-detail"></p>
+        </section>
+        <section class="today-cell">
+          <h3>☄️ Fireballs</h3>
+          <p class="today-cap" id="fireball-line">Loading…</p>
+        </section>
+        <section class="today-cell">
+          <h3>👀 NASA's actual watch list</h3>
+          <div id="sentry-list" class="today-cap">Loading…</div>
+          <p class="today-cap dim">Rocks with a real (tiny) chance of hitting — decades away. Nobody panic.</p>
+        </section>
+        <section class="today-cell">
+          <h3>🪐 The solar system, right now</h3>
+          <canvas id="orrery" width="520" height="520"></canvas>
+          <p class="today-cap dim">Ring spacing squeezed to fit — the angles are the planets' real positions this second.</p>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- Welcome / explainer overlay -->
+  <div id="welcome" class="hidden-hard">
+    <div class="welcome-card">
+      <div class="welcome-badge">🛰️ Powered by live NASA data · <a href="https://api.nasa.gov" target="_blank" rel="noopener">api.nasa.gov</a></div>
+      <h2>Space rocks fly past Earth <em>every single day.</em></h2>
+      <p class="welcome-lead">NASA tracks all of them. This page shows the ones passing <b>today</b> — real rocks, real sizes, real distances. Updated live.</p>
+      <div class="welcome-legend">
+        <div><span class="wl-icon">🌍</span><div><b>The blue ball</b> — Earth. That's us.</div></div>
+        <div><span class="wl-icon">🌕</span><div><b>The grey ball</b> — the Moon, at its real distance. Use it as your measuring tape.</div></div>
+        <div><span class="wl-icon">🪨</span><div><b>The floating rocks</b> — today's actual asteroids. The rings show the path each one is taking.</div></div>
+        <div><span class="wl-icon">🔴</span><div><b>A red glowing rock</b> — one NASA officially labels "potentially hazardous". Still missing us — just big and close enough that they keep an eye on it.</div></div>
+        <div><span class="wl-icon">🛰️</span><div><b>The tiny satellite near Earth</b> — the real International Space Station, at its live position right now. Click it — there are humans on it.</div></div>
+      </div>
+      <p class="welcome-tip">📖 <b>Reading the numbers:</b> "5.2× Moon" means that rock passes 5.2 times <i>farther away</i> than the Moon. Bigger number = farther = safer.</p>
+      <p class="welcome-controls">🖱️ Drag to look around · scroll to zoom · <b>click any rock for its story</b></p>
+      <button id="welcome-go">Got it — show me the sky →</button>
+    </div>
+  </div>
+
+  <!-- Left: asteroid list -->
+  <aside id="list-panel" class="hidden">
+    <div class="panel-head">
+      <h2 id="list-title">Today's flybys</h2>
+      <span class="panel-date" id="today-date"></span>
+    </div>
+    <div class="time-travel" title="Pick any date — try your birthday">
+      <span>🕰️</span>
+      <input type="date" id="date-picker" />
+    </div>
+    <div id="asteroid-list"></div>
+  </aside>
+
+  <!-- Right: detail card -->
+  <aside id="detail-panel" class="hidden">
+    <button id="detail-close" aria-label="Close">✕</button>
+    <div class="detail-hazard" id="detail-hazard"></div>
+    <h2 id="detail-name">—</h2>
+    <div class="detail-time" id="detail-time"></div>
+    <div class="detail-rows">
+      <div class="detail-row">
+        <span class="detail-icon">📏</span>
+        <div><b id="detail-size">—</b><small id="detail-size-cmp"></small></div>
+      </div>
+      <div class="detail-row">
+        <span class="detail-icon">🚀</span>
+        <div><b id="detail-speed">—</b><small id="detail-speed-cmp"></small></div>
+      </div>
+      <div class="detail-row">
+        <span class="detail-icon">🌙</span>
+        <div><b id="detail-miss">—</b><small id="detail-miss-cmp"></small></div>
+      </div>
+    </div>
+    <div class="detail-india" id="detail-india"></div>
+    <button id="impact-btn">💥 What if it hit?</button>
+    <a id="detail-link" href="#" target="_blank" rel="noopener">View on NASA JPL ↗</a>
+  </aside>
+
+  <!-- Impact simulator overlay -->
+  <div id="impact" class="hidden-hard">
+    <div class="impact-card">
+      <button id="impact-close" aria-label="Close">✕</button>
+      <h2>💥 What if <span id="impact-name">it</span> hit…</h2>
+      <div class="impact-controls">
+        <label for="impact-city">Drop it on:</label>
+        <select id="impact-city">
+          <option>Mumbai</option>
+          <option>Delhi</option>
+          <option>Bengaluru</option>
+          <option>Hyderabad</option>
+          <option>Chennai</option>
+          <option>Kolkata</option>
+          <option>Pune</option>
+          <option>Jaipur</option>
+        </select>
+      </div>
+      <div id="impact-map"></div>
+      <div class="impact-legend" id="impact-legend"></div>
+      <div class="impact-stats" id="impact-stats"></div>
+      <p class="impact-note">Rough estimates for a rocky asteroid, ground impact. Purely for perspective — NASA confirms this rock is safely missing us. 🙂</p>
+    </div>
+  </div>
+
+  <!-- Bottom stats strip -->
+  <footer id="stats" class="hidden">
+    <div class="stat"><b id="stat-count">0</b><span>asteroids today</span></div>
+    <div class="stat"><b id="stat-closest">—</b><span>closest miss</span></div>
+    <div class="stat"><b id="stat-fastest">—</b><span>fastest rock</span></div>
+    <div class="stat hazard"><b id="stat-hazard">0</b><span>flagged "hazardous"</span></div>
+    <div class="stat-hint">drag to orbit · scroll to zoom · click a rock</div>
+  </footer>
+
+  <!-- Hover tooltip -->
+  <div id="tooltip" class="hidden"></div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
