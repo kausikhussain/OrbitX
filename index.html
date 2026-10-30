@@ -1,208 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Orbit Watch — Is anything hitting Earth today?</title>
-  <meta name="description" content="Live 3D tracker of every asteroid passing Earth today, powered by real NASA data." />
-  <meta property="og:title" content="Orbit Watch — Is anything hitting Earth today?" />
-  <meta property="og:description" content="Real asteroids. Real NASA data. Rendered live in 3D." />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☄️</text></svg>" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js" defer></script>
-</head>
-<body>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ecliptara — Space Intelligence & Near-Earth Object Platform</title>
+  <meta name="description" content="Independent scientific space intelligence platform tracking near-Earth objects with verified NASA/JPL telemetry, real-time astrodynamic visualization, and encounter replay.">
+  <meta property="og:title" content="Ecliptara — Space Intelligence Observatory">
+  <meta property="og:description" content="Live 3D Near-Earth Object tracking, encounter replay, asteroid comparison lab, and satellite situational awareness.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☄️</text></svg>">
 
-  <!-- Loading overlay -->
-  <div id="loader">
-    <div class="loader-inner">
-      <div class="radar"><div class="radar-sweep"></div><div class="radar-dot"></div></div>
-      <h1 class="loader-title">ORBIT WATCH</h1>
-      <p class="loader-sub" id="loader-status">Contacting NASA…</p>
-    </div>
-  </div>
+  <!-- Editorial & Monospaced Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 
-  <!-- 3D canvas mounts here -->
-  <div id="scene-container"></div>
+  <!-- Core Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
-  <!-- Top verdict banner -->
-  <header id="banner" class="hidden">
-    <div class="banner-brand">☄️ ORBIT WATCH</div>
-    <div class="banner-center">
-      <div class="banner-question">Is anything hitting Earth today?</div>
-      <div class="banner-verdict" id="verdict">—</div>
-      <div class="banner-sub" id="verdict-sub"></div>
-    </div>
-    <a class="banner-source" id="data-source" href="https://api.nasa.gov" target="_blank" rel="noopener" title="This site pulls live data from NASA's public asteroid-tracking API">
-      <span class="dot"></span><span id="source-label">LIVE NASA DATA</span>
-    </a>
-  </header>
+  <!-- External Cartography & Astrodynamics Libraries -->
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
 
-  <!-- Help button -->
-  <button id="help-btn" class="hidden" title="What am I looking at?">?</button>
-
-  <!-- Floating actions -->
-  <div id="fab-stack" class="hidden">
-    <button id="today-btn" title="Space Today — sun, fireballs, watch list & more">🌞</button>
-    <button id="share-btn" title="Download today's status as an image">📸</button>
-    <button id="sound-btn" title="Sound on / off">🔊</button>
-  </div>
-
-  <!-- Left: launch countdown + satellite layers -->
-  <div id="left-stack" class="hidden">
-    <div id="launch-chip" class="side-chip hidden-hard">
-      <div class="launch-top" id="launch-label">🚀 —</div>
-      <div class="launch-mid" id="launch-rocket"></div>
-      <div class="launch-count" id="launch-count">T− …</div>
-    </div>
-    <div id="swarm-chip" class="side-chip hidden-hard">
-      <div class="chip-row">
-        <button id="swarm-toggle" class="chip-btn active">🛰️ Satellites</button>
-        <button id="india-toggle" class="chip-btn">🇮🇳 India</button>
-      </div>
-      <div class="chip-count" id="swarm-count"></div>
-    </div>
-  </div>
-
-  <!-- Space Today overlay -->
-  <div id="today" class="hidden-hard">
-    <div class="today-card">
-      <button id="today-close" aria-label="Close">✕</button>
-      <h2>🌞 Space, today</h2>
-      <div class="today-grid">
-        <section class="today-cell">
-          <h3>📷 NASA's picture of the day</h3>
-          <img id="apod-img" alt="Astronomy picture of the day" style="display:none" loading="lazy" />
-          <p id="apod-title" class="today-cap">Loading…</p>
-        </section>
-        <section class="today-cell">
-          <h3>🌍 Earth, photographed today</h3>
-          <img id="epic-img" alt="Earth from the DSCOVR satellite" style="display:none" loading="lazy" />
-          <p id="epic-cap" class="today-cap">Loading…</p>
-        </section>
-        <section class="today-cell">
-          <h3>☀️ Sun mood</h3>
-          <p class="today-big" id="sun-status">Checking…</p>
-          <p class="today-cap" id="sun-detail"></p>
-        </section>
-        <section class="today-cell">
-          <h3>☄️ Fireballs</h3>
-          <p class="today-cap" id="fireball-line">Loading…</p>
-        </section>
-        <section class="today-cell">
-          <h3>👀 NASA's actual watch list</h3>
-          <div id="sentry-list" class="today-cap">Loading…</div>
-          <p class="today-cap dim">Rocks with a real (tiny) chance of hitting — decades away. Nobody panic.</p>
-        </section>
-        <section class="today-cell">
-          <h3>🪐 The solar system, right now</h3>
-          <canvas id="orrery" width="520" height="520"></canvas>
-          <p class="today-cap dim">Ring spacing squeezed to fit — the angles are the planets' real positions this second.</p>
-        </section>
-      </div>
-    </div>
-  </div>
-
-  <!-- Welcome / explainer overlay -->
-  <div id="welcome" class="hidden-hard">
-    <div class="welcome-card">
-      <div class="welcome-badge">🛰️ Powered by live NASA data · <a href="https://api.nasa.gov" target="_blank" rel="noopener">api.nasa.gov</a></div>
-      <h2>Space rocks fly past Earth <em>every single day.</em></h2>
-      <p class="welcome-lead">NASA tracks all of them. This page shows the ones passing <b>today</b> — real rocks, real sizes, real distances. Updated live.</p>
-      <div class="welcome-legend">
-        <div><span class="wl-icon">🌍</span><div><b>The blue ball</b> — Earth. That's us.</div></div>
-        <div><span class="wl-icon">🌕</span><div><b>The grey ball</b> — the Moon, at its real distance. Use it as your measuring tape.</div></div>
-        <div><span class="wl-icon">🪨</span><div><b>The floating rocks</b> — today's actual asteroids. The rings show the path each one is taking.</div></div>
-        <div><span class="wl-icon">🔴</span><div><b>A red glowing rock</b> — one NASA officially labels "potentially hazardous". Still missing us — just big and close enough that they keep an eye on it.</div></div>
-        <div><span class="wl-icon">🛰️</span><div><b>The tiny satellite near Earth</b> — the real International Space Station, at its live position right now. Click it — there are humans on it.</div></div>
-      </div>
-      <p class="welcome-tip">📖 <b>Reading the numbers:</b> "5.2× Moon" means that rock passes 5.2 times <i>farther away</i> than the Moon. Bigger number = farther = safer.</p>
-      <p class="welcome-controls">🖱️ Drag to look around · scroll to zoom · <b>click any rock for its story</b></p>
-      <button id="welcome-go">Got it — show me the sky →</button>
-    </div>
-  </div>
-
-  <!-- Left: asteroid list -->
-  <aside id="list-panel" class="hidden">
-    <div class="panel-head">
-      <h2 id="list-title">Today's flybys</h2>
-      <span class="panel-date" id="today-date"></span>
-    </div>
-    <div class="time-travel" title="Pick any date — try your birthday">
-      <span>🕰️</span>
-      <input type="date" id="date-picker" />
-    </div>
-    <div id="asteroid-list"></div>
-  </aside>
-
-  <!-- Right: detail card -->
-  <aside id="detail-panel" class="hidden">
-    <button id="detail-close" aria-label="Close">✕</button>
-    <div class="detail-hazard" id="detail-hazard"></div>
-    <h2 id="detail-name">—</h2>
-    <div class="detail-time" id="detail-time"></div>
-    <div class="detail-rows">
-      <div class="detail-row">
-        <span class="detail-icon">📏</span>
-        <div><b id="detail-size">—</b><small id="detail-size-cmp"></small></div>
-      </div>
-      <div class="detail-row">
-        <span class="detail-icon">🚀</span>
-        <div><b id="detail-speed">—</b><small id="detail-speed-cmp"></small></div>
-      </div>
-      <div class="detail-row">
-        <span class="detail-icon">🌙</span>
-        <div><b id="detail-miss">—</b><small id="detail-miss-cmp"></small></div>
-      </div>
-    </div>
-    <div class="detail-india" id="detail-india"></div>
-    <button id="impact-btn">💥 What if it hit?</button>
-    <a id="detail-link" href="#" target="_blank" rel="noopener">View on NASA JPL ↗</a>
-  </aside>
-
-  <!-- Impact simulator overlay -->
-  <div id="impact" class="hidden-hard">
-    <div class="impact-card">
-      <button id="impact-close" aria-label="Close">✕</button>
-      <h2>💥 What if <span id="impact-name">it</span> hit…</h2>
-      <div class="impact-controls">
-        <label for="impact-city">Drop it on:</label>
-        <select id="impact-city">
-          <option>Mumbai</option>
-          <option>Delhi</option>
-          <option>Bengaluru</option>
-          <option>Hyderabad</option>
-          <option>Chennai</option>
-          <option>Kolkata</option>
-          <option>Pune</option>
-          <option>Jaipur</option>
-        </select>
-      </div>
-      <div id="impact-map"></div>
-      <div class="impact-legend" id="impact-legend"></div>
-      <div class="impact-stats" id="impact-stats"></div>
-      <p class="impact-note">Rough estimates for a rocky asteroid, ground impact. Purely for perspective — NASA confirms this rock is safely missing us. 🙂</p>
-    </div>
-  </div>
-
-  <!-- Bottom stats strip -->
-  <footer id="stats" class="hidden">
-    <div class="stat"><b id="stat-count">0</b><span>asteroids today</span></div>
-    <div class="stat"><b id="stat-closest">—</b><span>closest miss</span></div>
-    <div class="stat"><b id="stat-fastest">—</b><span>fastest rock</span></div>
-    <div class="stat hazard"><b id="stat-hazard">0</b><span>flagged "hazardous"</span></div>
-    <div class="stat-hint">drag to orbit · scroll to zoom · click a rock</div>
-  </footer>
-
-  <!-- Hover tooltip -->
-  <div id="tooltip" class="hidden"></div>
-
+  <!-- Three.js Import Map -->
   <script type="importmap">
   {
     "imports": {
@@ -211,6 +32,756 @@
     }
   }
   </script>
+</head>
+<body class="observatory-theme">
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       CINEMATIC OBSERVATORY INITIALIZATION LOADER
+       ═════════════════════════════════════════════════════════════════════ -->
+  <div id="loader" role="alert" aria-live="polite">
+    <div class="loader-backdrop-arc"></div>
+    <div class="loader-observatory">
+      <div class="loader-brand-area">
+        <div class="loader-mark">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="16" stroke="rgba(110,231,255,0.25)" stroke-width="1.2" stroke-dasharray="4 4"/>
+            <circle cx="18" cy="18" r="8" stroke="#6ee7ff" stroke-width="1.5"/>
+            <circle cx="18" cy="18" r="3" fill="#6ee7ff"/>
+            <path d="M4 18h6M26 18h6M18 4v6M18 26v6" stroke="rgba(110,231,255,0.4)" stroke-width="1.2"/>
+          </svg>
+        </div>
+        <h1 class="loader-title">ECLIPTARA</h1>
+        <p class="loader-tagline">OBSERVE NEAR-EARTH SPACE. UNDERSTAND EVERY ENCOUNTER.</p>
+      </div>
+
+      <!-- State-Driven Telemetry Boot Log -->
+      <div class="loader-terminal-box">
+        <div class="loader-terminal-line active" id="log-step-1">
+          <span class="term-status">[SYNC]</span> Initializing WebGL 2.0 astrodynamics engine…
+        </div>
+        <div class="loader-terminal-line" id="log-step-2">
+          <span class="term-status">[TELEMETRY]</span> Querying NASA Planetary Defense NeoWs ephemerides…
+        </div>
+        <div class="loader-terminal-line" id="log-step-3">
+          <span class="term-status">[PROPAGATE]</span> Calibrating orbital elements &amp; trajectories…
+        </div>
+        <div class="loader-terminal-line" id="log-step-4">
+          <span class="term-status">[READY]</span> Ecliptara observatory workstation online.
+        </div>
+      </div>
+
+      <div class="loader-progress-track">
+        <div id="loader-progress-bar" class="loader-progress-fill"></div>
+      </div>
+      <p id="loader-status" class="loader-status-hint">Establishing telemetry uplink…</p>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       3D ASTRODYNAMICS VIEWPORT (FULL-SCREEN CANVAS)
+       ═════════════════════════════════════════════════════════════════════ -->
+  <div id="scene-container" role="img" aria-label="Interactive 3D geocentric visualization of Earth, lunar orbit, and near-Earth objects"></div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       TOP COMMAND BAR (EDGE-TO-EDGE WORKSTATION TOOLBAR)
+       ═════════════════════════════════════════════════════════════════════ -->
+  <header id="command-bar" class="hidden" role="banner">
+    <div class="bar-left">
+      <div class="bar-brand" title="Ecliptara Space Intelligence Platform">
+        <svg class="brand-svg" width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="rgba(110,231,255,0.4)" stroke-width="1.2"/>
+          <circle cx="12" cy="12" r="4.5" fill="#6ee7ff"/>
+          <ellipse cx="12" cy="12" rx="11" ry="5" stroke="#6ee7ff" stroke-width="1" transform="rotate(-30 12 12)"/>
+        </svg>
+        <div class="brand-titles">
+          <span class="brand-name">ECLIPTARA</span>
+          <span class="brand-spec">SYS-01 · ORBITAL INTELLIGENCE</span>
+        </div>
+      </div>
+
+      <!-- Telemetry Status Pill (Click opens Data Provenance) -->
+      <button id="data-status" class="telemetry-pill" role="status" aria-live="polite" title="Inspect Scientific Data Provenance & Telemetry State">
+        <span class="status-pulse-dot"></span>
+        <span id="data-status-text">CONNECTING</span>
+      </button>
+    </div>
+
+    <!-- Center Observation Date Navigator -->
+    <div class="bar-center">
+      <div class="date-navigator" role="region" aria-label="Observation Date Selector">
+        <button id="prev-date" class="date-arrow-btn" aria-label="Previous day" title="Previous observation date (←)">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+        <label id="date-display" class="date-label-wrapper" title="Select custom observation date">
+          <span id="date-text">Loading…</span>
+          <input type="date" id="date-picker" aria-label="Calendar date selector">
+        </label>
+        <button id="next-date" class="date-arrow-btn" aria-label="Next day" title="Next observation date (→)">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 3L11 8L6 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+        <button id="refresh-btn" class="date-refresh-btn" aria-label="Refresh telemetry feed" title="Bypass cache & refresh from NASA">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2.5 8a5.5 5.5 0 019.8-3.4M13.5 8a5.5 5.5 0 01-9.8 3.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M12.5 2v3.2h-3.2M3.5 14v-3.2h3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Controls: Command Launcher & Instruments -->
+    <div class="bar-right">
+      <button id="cmd-launcher-btn" class="cmd-pill-btn" aria-label="Open Command Palette" title="Command Palette (Ctrl + K)">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <span class="cmd-pill-text">Command</span>
+        <kbd class="cmd-kbd">⌘K</kbd>
+      </button>
+
+      <button id="sound-btn" class="bar-icon-btn" aria-label="Toggle procedural audio hum" title="Toggle audio hum (M)">
+        <svg id="sound-icon-on" width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M3 7h2l4-4v12l-4-4H3V7z" fill="currentColor"/><path d="M12.5 5.5a5 5 0 010 7M14.5 3.5a8 8 0 010 11" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        <svg id="sound-icon-off" class="hidden-hard" width="16" height="16" viewBox="0 0 18 18" fill="none"><path d="M3 7h2l4-4v12l-4-4H3V7z" fill="currentColor"/><path d="M12 7l4 4M16 7l-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+
+      <button id="screenshot-btn" class="bar-icon-btn" aria-label="Export 3D canvas capture" title="Capture 3D scene screenshot">
+        <svg width="15" height="15" viewBox="0 0 18 18" fill="none"><rect x="2" y="4.5" width="14" height="9.5" rx="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="9" cy="9.5" r="2.5" stroke="currentColor" stroke-width="1.3"/><rect x="11.5" y="6" width="2" height="1" rx="0.5" fill="currentColor"/></svg>
+      </button>
+
+      <button id="settings-btn" class="bar-icon-btn" aria-label="Display & system preferences" title="Settings">
+        <svg width="15" height="15" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.4 3.4l1.4 1.4M13.2 13.2l1.4 1.4M3.4 14.6l1.4-1.4M13.2 4.8l1.4-1.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      </button>
+
+      <button id="help-btn" class="bar-icon-btn help-btn" aria-label="Keybindings & scientific guide" title="Help & Shortcuts (?)">?</button>
+    </div>
+  </header>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       VERTICAL NAVIGATION RAIL (DEDICATED WORKSPACE SELECTOR)
+       ═════════════════════════════════════════════════════════════════════ -->
+  <nav id="nav-rail" class="hidden" role="navigation" aria-label="Observatory Workspaces">
+    <div class="rail-top">
+      <button class="rail-btn active" id="rail-observatory" data-view="observatory" title="Observatory: 3D Geocentric Space View">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.4"/><ellipse cx="12" cy="12" rx="4.5" ry="9" stroke="currentColor" stroke-width="1"/><path d="M3.5 9h17M3.5 15h17" stroke="currentColor" stroke-width="0.8"/></svg>
+        <span class="rail-tooltip">Observatory</span>
+      </button>
+
+      <button class="rail-btn" id="rail-encounters" data-view="encounters" title="Asteroid Flyby Callset (E)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h10M4 18h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="19" cy="12" r="2" fill="currentColor"/></svg>
+        <span class="rail-tooltip">Encounters</span>
+      </button>
+
+      <button class="rail-btn" id="rail-replay" data-view="replay" title="Encounter Replay Trajectory Scrubber (T)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.4"/><path d="M12 7v5l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <span class="rail-tooltip">Replay Flyby</span>
+      </button>
+
+      <button class="rail-btn" id="rail-compare" data-view="compare" title="Asteroid Comparison Lab (C)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 18h18M6 18V10M12 18V5M18 18V13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span id="compare-count-badge" class="rail-badge" style="display:none">0</span>
+        <span class="rail-tooltip">Comparison Lab</span>
+      </button>
+
+      <button class="rail-btn" id="rail-impact" data-view="impact" title="Hypothetical Impact Simulator">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" fill="currentColor"/><circle cx="12" cy="12" r="6" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2 2"/><circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1"/></svg>
+        <span class="rail-tooltip">Impact Lab</span>
+      </button>
+
+      <button class="rail-btn" id="rail-satellites" data-view="satellites" title="Active Satellite Swarm (S)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="10" y="10" width="4" height="4" fill="currentColor"/><path d="M7 12H3M21 12h-4M12 7V3M12 21v-4M5 5l3 3M19 19l-3-3M19 5l-3 3M5 19l3-3" stroke="currentColor" stroke-width="1.2"/></svg>
+        <span class="rail-tooltip">Satellites</span>
+      </button>
+
+      <button class="rail-btn" id="rail-today" data-view="today" title="Space Today: APOD, Flares, Fireballs">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.4"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        <span class="rail-tooltip">Space Today</span>
+      </button>
+    </div>
+
+    <div class="rail-bottom">
+      <button class="rail-btn" id="rail-provenance" data-view="provenance" title="Scientific Data Provenance Center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3L20 7.5v9L12 21l-8-4.5v-9L12 3z" stroke="currentColor" stroke-width="1.4"/><path d="M12 9v3M12 15h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span class="rail-tooltip">Data Provenance</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       CENTRAL HEADS-UP DISPLAY (SUBTLE HUD BADGE & CAMERA TOOLBAR)
+       ═════════════════════════════════════════════════════════════════════ -->
+  <div id="canvas-hud" class="hidden">
+    <!-- Top-Left Contextual Observation Brief (No giant green banner) -->
+    <div id="encounter-brief" class="hud-brief-badge" role="region" aria-label="Observation Summary">
+      <span class="brief-lead">OBSERVATION BRIEF</span>
+      <span id="brief-headline" class="brief-headline">Loading query…</span>
+      <span id="brief-meta" class="brief-meta">NASA NeoWs Ephemerides · 1 LD = 384,400 km</span>
+    </div>
+
+    <!-- Top-Right Scene View Controls -->
+    <div id="scene-toolbar" class="hud-toolbar" role="toolbar" aria-label="Camera Controls">
+      <button id="view-earth" class="hud-tool-btn active" title="Earth-centered view">Earth</button>
+      <button id="view-orbit" class="hud-tool-btn" title="Orbital overview">Orrery</button>
+      <div class="tool-sep"></div>
+      <button id="grid-toggle-btn" class="hud-tool-btn" title="Toggle Lat/Long coordinate grid">Grid</button>
+      <button id="view-reset" class="hud-tool-btn" title="Reset camera orientation (R)">Reset</button>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       CONTEXTUAL ENCOUNTER INSPECTOR DRAWER (RIGHT-SIDE DOCKED WORKSPACE)
+       ═════════════════════════════════════════════════════════════════════ -->
+  <aside id="inspector-drawer" class="hidden" role="complementary" aria-label="Encounter Inspector">
+    <!-- Header -->
+    <div class="inspector-header">
+      <div class="inspector-header-left">
+        <button id="inspector-back-btn" class="inspector-back-btn hidden-hard" title="Back to asteroid callset">← All</button>
+        <h2 id="inspector-title" class="inspector-heading">Asteroid Encounters</h2>
+        <span id="neo-count" class="count-tag">0</span>
+      </div>
+      <button id="inspector-close" class="inspector-close-btn" aria-label="Close inspector drawer" title="Collapse inspector">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <!-- VIEW A: CALLSET BROWSING LIST -->
+    <div id="inspector-list-view" class="inspector-view">
+      <div class="filter-strip">
+        <div class="filter-search-box">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.2"/><path d="M9.5 9.5l3 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+          <input type="search" id="asteroid-search" placeholder="Search designation (/)" aria-label="Search asteroids by name or designation">
+        </div>
+        <div class="filter-row">
+          <select id="sort-select" aria-label="Sort asteroid callset">
+            <option value="distance">Closest first</option>
+            <option value="distance-desc">Farthest first</option>
+            <option value="velocity-desc">Fastest first</option>
+            <option value="velocity">Slowest first</option>
+            <option value="size-desc">Largest first</option>
+            <option value="size">Smallest first</option>
+            <option value="time">Soonest encounter</option>
+          </select>
+          <label class="pha-toggle-label" title="Show only Potentially Hazardous Asteroids (MOID <= 0.05 AU & H <= 22)">
+            <input type="checkbox" id="filter-hazardous">
+            <span>⚠ PHA</span>
+          </label>
+          <button id="clear-filters" class="clear-filter-btn hidden-hard" title="Clear search filters">✕</button>
+        </div>
+      </div>
+
+      <!-- Scrollable List -->
+      <div id="asteroid-list" class="encounter-cards-list" role="listbox" aria-label="Asteroid encounters"></div>
+
+      <!-- Skeletons -->
+      <div id="list-loading" class="state-container hidden-hard">
+        <div class="skeleton-card"><div class="skel-line w70"></div><div class="skel-line w40"></div><div class="skel-line w55"></div></div>
+        <div class="skeleton-card"><div class="skel-line w60"></div><div class="skel-line w45"></div><div class="skel-line w50"></div></div>
+        <div class="skeleton-card"><div class="skel-line w75"></div><div class="skel-line w35"></div><div class="skel-line w60"></div></div>
+      </div>
+
+      <!-- Empty -->
+      <div id="list-empty" class="state-container hidden-hard">
+        <div class="state-icon">🔭</div>
+        <p class="state-title">No matching objects</p>
+        <p class="state-desc">Adjust your filters or pick another observation date.</p>
+      </div>
+
+      <!-- Error -->
+      <div id="list-error" class="state-container hidden-hard">
+        <div class="state-icon">⚠</div>
+        <p class="state-title">Feed query offline</p>
+        <p class="state-desc">Could not reach authoritative ephemeris endpoint.</p>
+        <button id="retry-btn" class="primary-btn">Retry query</button>
+      </div>
+    </div>
+
+    <!-- VIEW B: SINGLE OBJECT TELEMETRY DOSSIER -->
+    <div id="inspector-detail-view" class="inspector-view hidden-hard">
+      <div class="dossier-hero">
+        <div class="dossier-meta-top">
+          <span id="detail-hazard" class="hazard-badge-pill hidden-hard">⚠ POTENTIALLY HAZARDOUS</span>
+          <span id="detail-designation" class="dossier-desig"></span>
+        </div>
+        <h3 id="detail-name" class="dossier-name">—</h3>
+      </div>
+
+      <div class="dossier-sections">
+        <div class="dossier-card">
+          <div class="dossier-card-title">Encounter Astrodynamics</div>
+          <div class="dossier-metric-row">
+            <span class="dm-label">Closest Approach</span>
+            <span class="dm-val" id="detail-time">—</span>
+          </div>
+          <div class="dossier-metric-row">
+            <span class="dm-label">Nominal Miss Distance</span>
+            <span class="dm-val highlight" id="detail-distance">—</span>
+          </div>
+          <div class="dossier-metric-row">
+            <span class="dm-label">Lunar Distances</span>
+            <span class="dm-val highlight" id="detail-distance-lunar">—</span>
+          </div>
+          <div class="dossier-metric-row">
+            <span class="dm-label">Relative Encounter Velocity</span>
+            <span class="dm-val" id="detail-velocity">—</span>
+          </div>
+        </div>
+
+        <div class="dossier-card">
+          <div class="dossier-card-title">Physical Estimations</div>
+          <div class="dossier-metric-row">
+            <span class="dm-label">Estimated Diameter</span>
+            <span class="dm-val" id="detail-diameter">—</span>
+          </div>
+          <div class="dossier-metric-row">
+            <span class="dm-label">Scale Benchmark</span>
+            <span class="dm-val sub" id="detail-size-cmp">—</span>
+          </div>
+          <div class="dossier-metric-row">
+            <span class="dm-label">Absolute Magnitude (H)</span>
+            <span class="dm-val" id="detail-magnitude">—</span>
+          </div>
+        </div>
+
+        <!-- Action Workspaces -->
+        <div class="dossier-actions-group">
+          <button id="replay-btn" class="dossier-btn action-replay">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.3"/><path d="M8 4.5v3.5l2.5 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            Replay Flyby Trajectory
+          </button>
+          <button id="detail-compare-btn" class="dossier-btn action-compare">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 13h12M5 13V7M11 13V3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            Add to Comparison Lab
+          </button>
+          <button id="impact-btn" class="dossier-btn action-impact">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.5" fill="currentColor"/><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2"/><circle cx="8" cy="8" r="7.2" stroke="currentColor" stroke-width="0.8"/></svg>
+            Model Hypothetical Impact
+          </button>
+          <a id="detail-link" class="dossier-btn action-jpl" href="#" target="_blank" rel="noopener noreferrer">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M7 3H3v10h10V9M10 3h3v3M9.5 6.5L13 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            JPL Small-Body Database Record
+          </a>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       BOTTOM ORBITAL TIMELINE & TELEMETRY STRIP
+       ═════════════════════════════════════════════════════════════════════ -->
+  <footer id="orbital-timeline" class="hidden" role="contentinfo">
+    <!-- Left Summary Metrics -->
+    <div class="timeline-metrics">
+      <div class="t-stat">
+        <span class="t-stat-label">FEED CALLSET</span>
+        <span class="t-stat-num" id="stat-count">—</span>
+      </div>
+      <div class="t-stat-sep"></div>
+      <div class="t-stat">
+        <span class="t-stat-label">CLOSEST APPROACH</span>
+        <span class="t-stat-num" id="stat-closest">—</span>
+      </div>
+      <div class="t-stat-sep"></div>
+      <div class="t-stat">
+        <span class="t-stat-label">MAX SPEED</span>
+        <span class="t-stat-num" id="stat-fastest">—</span>
+      </div>
+      <div class="t-stat-sep"></div>
+      <div class="t-stat">
+        <span class="t-stat-label">PHA COUNT</span>
+        <span class="t-stat-num" id="stat-hazard">—</span>
+      </div>
+    </div>
+
+    <!-- Center 24-Hour Encounter Timeline Axis -->
+    <div class="timeline-axis-container" role="region" aria-label="24-Hour Encounter Timeline">
+      <div class="timeline-track" id="timeline-track">
+        <div class="timeline-hour-mark" style="left: 0%"><span>00:00</span></div>
+        <div class="timeline-hour-mark" style="left: 25%"><span>06:00</span></div>
+        <div class="timeline-hour-mark" style="left: 50%"><span>12:00</span></div>
+        <div class="timeline-hour-mark" style="left: 75%"><span>18:00</span></div>
+        <div class="timeline-hour-mark" style="left: 100%"><span>24:00</span></div>
+        <div id="timeline-pips" class="timeline-pips-layer"></div>
+      </div>
+    </div>
+
+    <!-- Right Live Telemetry Clock & Launch Chip -->
+    <div class="timeline-status-right">
+      <div id="launch-chip" class="launch-chip-mini hidden-hard" title="Upcoming launch schedule">
+        <span class="lc-icon">🚀</span>
+        <span id="launch-label" class="lc-label">Launch</span>
+        <span id="launch-count" class="lc-count">TBD</span>
+      </div>
+      <div class="utc-clock">
+        <span class="utc-label">UTC</span>
+        <span id="live-utc-clock" class="utc-digits">00:00:00</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       SIGNATURE FEATURE: COMMAND PALETTE (CTRL + K)
+       ═════════════════════════════════════════════════════════════════════ -->
+  <div id="command-palette" class="cmd-overlay hidden-hard" role="dialog" aria-modal="true" aria-label="Command Palette">
+    <div class="cmd-backdrop" data-close="cmd"></div>
+    <div class="cmd-window">
+      <div class="cmd-input-row">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <input type="text" id="cmd-search-input" placeholder="Type a command or asteroid designation…" autocomplete="off" spellcheck="false">
+        <kbd class="cmd-esc-kbd">ESC</kbd>
+      </div>
+      <div class="cmd-results" id="cmd-results">
+        <!-- Rendered dynamically -->
+      </div>
+      <div class="cmd-footer">
+        <span><kbd>↑</kbd> <kbd>↓</kbd> navigate</span>
+        <span><kbd>↵</kbd> select</span>
+        <span><kbd>ESC</kbd> close</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       SIGNATURE FEATURE 1: ENCOUNTER REPLAY WORKSPACE
+       ═════════════════════════════════════════════════════════════════════ -->
+  <div id="replay-modal" class="overlay hidden-hard" role="dialog" aria-modal="true" aria-label="Encounter Replay Workspace">
+    <div class="overlay-backdrop" data-close="replay-modal"></div>
+    <div class="overlay-card replay-card">
+      <div class="overlay-header">
+        <div class="replay-header-titles">
+          <h2>⏱ Encounter Replay Workspace</h2>
+          <span id="replay-target-name" class="replay-target-badge">—</span>
+        </div>
+        <button class="overlay-close" id="replay-close" aria-label="Close Encounter Replay">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <div class="replay-body">
+        <p class="replay-explainer">
+          Time-dependent astrodynamic trajectory analysis. Drag the scrubber to inspect instantaneous hyperbolic flyby distance, speed, and spatial geometry relative to Earth.
+        </p>
+
+        <div class="replay-scrubber-box">
+          <div class="replay-scrubber-top">
+            <span id="replay-time-display" class="replay-time-label">Closest Approach (Perigee)</span>
+            <span id="replay-timestamp" class="replay-timestamp">—</span>
+          </div>
+          <input type="range" id="replay-slider" min="-24" max="24" step="0.25" value="0" aria-label="Time offset in hours from perigee">
+          <div class="replay-scale-ticks">
+            <span>-24h</span>
+            <span>-12h</span>
+            <span class="tick-center">Perigee (0h)</span>
+            <span>+12h</span>
+            <span>+24h</span>
+          </div>
+        </div>
+
+        <div class="replay-controls-bar">
+          <button id="replay-step-back" class="secondary-btn" title="Step back 1 hour">◀ -1h</button>
+          <button id="replay-play-btn" class="primary-btn">▶ Play</button>
+          <button id="replay-step-fwd" class="secondary-btn" title="Step forward 1 hour">+1h ▶</button>
+          <button id="replay-reset-btn" class="secondary-btn" title="Snap to closest encounter">Reset to 0h</button>
+        </div>
+
+        <div class="replay-metrics-grid">
+          <div class="replay-metric-card">
+            <span class="replay-metric-label">Instantaneous Distance</span>
+            <span id="replay-distance-val" class="replay-metric-value">—</span>
+          </div>
+          <div class="replay-metric-card">
+            <span class="replay-metric-label">Instantaneous Velocity</span>
+            <span id="replay-velocity-val" class="replay-metric-value">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       SIGNATURE FEATURE 2: ASTEROID COMPARISON LAB
+       ═════════════════════════════════════════════════════════════════════ -->
+  <div id="comparison-modal" class="overlay hidden-hard" role="dialog" aria-modal="true" aria-label="Asteroid Comparison Lab">
+    <div class="overlay-backdrop" data-close="comparison-modal"></div>
+    <div class="overlay-card comparison-card">
+      <div class="overlay-header">
+        <h2>⚖ Asteroid Comparison Lab</h2>
+        <div class="comparison-header-actions">
+          <button id="comparison-clear-btn" class="secondary-btn">Clear All</button>
+          <button class="overlay-close" id="comparison-close" aria-label="Close Comparison Lab">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="comparison-body">
+        <p id="comparison-empty-notice" class="comparison-empty">
+          No asteroids currently selected for comparison.<br>
+          <small>Click "⚖ Compare" on any asteroid in the flyby explorer or detail drawer to inspect up to 3 objects side-by-side.</small>
+        </p>
+        <div id="comparison-grid" class="comparison-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       SIGNATURE FEATURE 3: DATA PROVENANCE & QUALITY CENTER
+       ═════════════════════════════════════════════════════════════════════ -->
+  <div id="provenance-modal" class="overlay hidden-hard" role="dialog" aria-modal="true" aria-label="Data Provenance & Scientific Quality Center">
+    <div class="overlay-backdrop" data-close="provenance-modal"></div>
+    <div class="overlay-card provenance-card">
+      <div class="overlay-header">
+        <h2>🔬 Scientific Data Provenance Center</h2>
+        <button class="overlay-close" id="provenance-close" aria-label="Close Data Provenance Center">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <div class="provenance-body">
+        <div class="prov-section">
+          <h3>Active Telemetry Session</h3>
+          <div class="prov-grid-summary">
+            <div class="prov-stat"><span class="prov-stat-label">Current Provider</span><span id="prov-cur-source" class="prov-stat-val">—</span></div>
+            <div class="prov-stat"><span class="prov-stat-label">Connection State</span><span id="prov-cur-status" class="prov-stat-val">—</span></div>
+            <div class="prov-stat"><span class="prov-stat-label">Last Valid Ingestion</span><span id="prov-cur-updated" class="prov-stat-val">—</span></div>
+          </div>
+        </div>
+
+        <div class="prov-section">
+          <h3>Authoritative Scientific Feeds</h3>
+          <div class="prov-table-wrapper">
+            <table class="prov-table">
+              <thead>
+                <tr>
+                  <th>Service</th>
+                  <th>Authority</th>
+                  <th>Data Type</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><b>NeoWs</b></td>
+                  <td>NASA / JPL Planetary Defense</td>
+                  <td>Near-Earth Asteroid Close Approaches</td>
+                  <td><span class="prov-badge live">Verified</span></td>
+                </tr>
+                <tr>
+                  <td><b>CNEOS Fireballs</b></td>
+                  <td>JPL Center for NEO Studies</td>
+                  <td>Atmospheric Bolide Sensor Events</td>
+                  <td><span class="prov-badge live">Verified</span></td>
+                </tr>
+                <tr>
+                  <td><b>JPL Sentry</b></td>
+                  <td>NASA JPL Automated Impact Monitoring</td>
+                  <td>Comprehensive Future Risk Catalog</td>
+                  <td><span class="prov-badge live">Verified</span></td>
+                </tr>
+                <tr>
+                  <td><b>DONKI</b></td>
+                  <td>NASA Space Weather Bureau</td>
+                  <td>Solar Flare Energetic Telemetry</td>
+                  <td><span class="prov-badge live">Verified</span></td>
+                </tr>
+                <tr>
+                  <td><b>DSCOVR EPIC</b></td>
+                  <td>NASA / NOAA</td>
+                  <td>Earth Polychromatic L1 Imagery</td>
+                  <td><span class="prov-badge live">Verified</span></td>
+                </tr>
+                <tr>
+                  <td><b>CelesTrak</b></td>
+                  <td>NORAD / Dr. T.S. Kelso</td>
+                  <td>Active Satellite Two-Line Element Sets</td>
+                  <td><span class="prov-badge live">Verified</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="prov-section">
+          <h3>Physical Constants &amp; Conventions</h3>
+          <ul class="prov-constants-list">
+            <li><b>1 Lunar Distance (LD):</b> <span id="prov-const-ld">384,400 km</span></li>
+            <li><b>1 Astronomical Unit (AU):</b> <span id="prov-const-au">149,597,870.7 km</span></li>
+            <li><b>TNT Equivalent Energy:</b> <span id="prov-const-tnt">4.184e15 J / Mt</span></li>
+            <li><b>Asteroid Density:</b> 3,000 kg/m³ (nominal S-type stony composition)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       HYPOTHETICAL IMPACT SIMULATOR
+       ═════════════════════════════════════════════════════════════════════ -->
+  <div id="impact" class="overlay hidden-hard" role="dialog" aria-modal="true" aria-label="Hypothetical Impact Simulator">
+    <div class="overlay-backdrop" data-close="impact"></div>
+    <div class="overlay-card impact-card">
+      <div class="overlay-header">
+        <h2>💥 Hypothetical Impact Simulator</h2>
+        <button class="overlay-close" data-close="impact" aria-label="Close impact simulator">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <p class="impact-disclaimer">⚠ Educational physics model only. This simulates a hypothetical scenario based on Collins et al. (2005) & Glasstone-Dolan overpressure physics, and does NOT indicate any predicted collision event.</p>
+      <div class="impact-controls">
+        <div class="impact-field">
+          <label>Asteroid</label>
+          <span id="impact-name" class="impact-name-value">—</span>
+        </div>
+        <div class="impact-field">
+          <label for="impact-density">Composition</label>
+          <select id="impact-density">
+            <option value="3000">Stony S-type (3,000 kg/m³)</option>
+            <option value="7800">Metallic M-type (7,800 kg/m³)</option>
+            <option value="1000">Carbonaceous / Comet (1,000 kg/m³)</option>
+          </select>
+        </div>
+        <div class="impact-field">
+          <label for="impact-city">Target City</label>
+          <select id="impact-city">
+            <option value="19.076,72.8777">Mumbai</option>
+            <option value="28.6139,77.2090">Delhi</option>
+            <option value="12.9716,77.5946">Bengaluru</option>
+            <option value="17.385,78.4867">Hyderabad</option>
+            <option value="13.0827,80.2707">Chennai</option>
+            <option value="22.5726,88.3639">Kolkata</option>
+            <option value="18.5204,73.8567">Pune</option>
+            <option value="26.9124,75.7873">Jaipur</option>
+          </select>
+        </div>
+      </div>
+      <div id="impact-map" class="impact-map"></div>
+      <div id="impact-stats" class="impact-stats">
+        <div class="impact-stat"><span class="impact-stat-label">Kinetic Energy</span><span class="impact-stat-value" id="impact-energy">—</span></div>
+        <div class="impact-stat"><span class="impact-stat-label">Hiroshima Equiv.</span><span class="impact-stat-value" id="impact-hiroshima">—</span></div>
+        <div class="impact-stat"><span class="impact-stat-label">Crater Diameter</span><span class="impact-stat-value" id="impact-crater">—</span></div>
+        <div class="impact-stat"><span class="impact-stat-label">Fireball Radius</span><span class="impact-stat-value" id="impact-fireball">—</span></div>
+        <div class="impact-stat"><span class="impact-stat-label">5 psi Blast Overpressure</span><span class="impact-stat-value" id="impact-blast">—</span></div>
+        <div class="impact-stat"><span class="impact-stat-label">1 psi Glass Shatter</span><span class="impact-stat-value" id="impact-glass">—</span></div>
+      </div>
+      <div class="impact-legend-bar">
+        <span class="legend-chip"><span class="legend-swatch" style="background:#ef4444"></span>Crater</span>
+        <span class="legend-chip"><span class="legend-swatch" style="background:#f97316"></span>Thermal Fireball</span>
+        <span class="legend-chip"><span class="legend-swatch" style="background:#f59e0b"></span>5 psi Blast Wave</span>
+        <span class="legend-chip"><span class="legend-swatch" style="background:#22d3ee"></span>1 psi Glass Shatter</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       SPACE TODAY OBSERVATIONS DASHBOARD
+       ═════════════════════════════════════════════════════════════════════ -->
+  <div id="today" class="overlay hidden-hard" role="dialog" aria-modal="true" aria-label="Space Today dashboard">
+    <div class="overlay-backdrop" data-close="today"></div>
+    <div class="overlay-card today-card">
+      <div class="overlay-header">
+        <h2>🌞 Space Today Observations</h2>
+        <button class="overlay-close" data-close="today" aria-label="Close Space Today">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="today-grid">
+        <div class="today-section">
+          <h3>Astronomy Picture of the Day</h3>
+          <img id="apod-img" alt="NASA Astronomy Picture of the Day" loading="lazy">
+          <p id="apod-title" class="today-caption"></p>
+        </div>
+        <div class="today-section">
+          <h3>DSCOVR EPIC Earth Camera</h3>
+          <img id="epic-img" alt="Full disk Earth from EPIC" loading="lazy">
+          <p id="epic-cap" class="today-caption"></p>
+        </div>
+        <div class="today-section">
+          <h3>Solar Flares (DONKI)</h3>
+          <div id="sun-status" class="sun-mood">—</div>
+          <p id="sun-detail" class="today-caption"></p>
+        </div>
+        <div class="today-section">
+          <h3>Atmospheric Bolides (Fireballs)</h3>
+          <p id="fireball-line" class="today-caption">—</p>
+        </div>
+        <div class="today-section">
+          <h3>JPL Sentry Collision Monitoring</h3>
+          <div id="sentry-list" class="sentry-entries">—</div>
+          <p class="sentry-note">Official risk assessment catalog. Listed probabilities represent statistical monitoring, not imminent collisions.</p>
+        </div>
+        <div class="today-section">
+          <h3>Inner Solar System Planetary Positions</h3>
+          <canvas id="orrery" width="520" height="520" aria-label="Heliocentric planetary orrery"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       SETTINGS & PREFERENCES MODAL
+       ═════════════════════════════════════════════════════════════════════ -->
+  <div id="settings-panel" class="overlay hidden-hard" role="dialog" aria-modal="true" aria-label="Display & Preferences Settings">
+    <div class="overlay-backdrop" data-close="settings-panel"></div>
+    <div class="overlay-card settings-card">
+      <div class="overlay-header">
+        <h2>System &amp; Visualization Settings</h2>
+        <button class="overlay-close" data-close="settings-panel" aria-label="Close settings">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="settings-body">
+        <div class="setting-group">
+          <h3>Astrodynamic Elements</h3>
+          <label class="setting-row"><span>Render orbital trajectory paths</span><input type="checkbox" id="setting-orbits" checked></label>
+          <label class="setting-row"><span>Earth latitude / longitude coordinate grid</span><input type="checkbox" id="setting-grid"></label>
+          <label class="setting-row"><span>Atmospheric limb scattering glow</span><input type="checkbox" id="setting-atmosphere" checked></label>
+          <label class="setting-row"><span>Dynamic atmospheric cloud shell</span><input type="checkbox" id="setting-clouds" checked></label>
+          <label class="setting-row"><span>Hover object labels</span><input type="checkbox" id="setting-labels" checked></label>
+        </div>
+        <div class="setting-group">
+          <h3>Accessibility</h3>
+          <label class="setting-row"><span>Reduced motion mode</span><input type="checkbox" id="setting-reduced-motion"></label>
+          <label class="setting-row"><span>High-contrast interface</span><input type="checkbox" id="setting-high-contrast"></label>
+        </div>
+        <div class="setting-group">
+          <h3>Telemetry &amp; Cache Storage</h3>
+          <button id="clear-cache-btn" class="secondary-btn">Purge local telemetry cache</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════════════════
+       HELP & KEYBOARD SHORTCUTS MODAL
+       ═════════════════════════════════════════════════════════════════════ -->
+  <div id="help-panel" class="overlay hidden-hard" role="dialog" aria-modal="true" aria-label="Help and keyboard shortcuts">
+    <div class="overlay-backdrop" data-close="help-panel"></div>
+    <div class="overlay-card help-card">
+      <div class="overlay-header">
+        <h2>Workstation Guidance &amp; Shortcuts</h2>
+        <button class="overlay-close" data-close="help-panel" aria-label="Close help">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="help-body">
+        <div class="help-section">
+          <h3>Command &amp; Keybindings</h3>
+          <div class="shortcut-row"><div class="shortcut-keys"><kbd>⌘K</kbd> / <kbd>Ctrl+K</kbd></div><span>Open Command Palette launcher</span></div>
+          <div class="shortcut-row"><div class="shortcut-keys"><kbd>E</kbd></div><span>Toggle Asteroid Encounters drawer</span></div>
+          <div class="shortcut-row"><div class="shortcut-keys"><kbd>T</kbd></div><span>Open Encounter Replay for selected object</span></div>
+          <div class="shortcut-row"><div class="shortcut-keys"><kbd>C</kbd></div><span>Open Asteroid Comparison Lab</span></div>
+          <div class="shortcut-row"><div class="shortcut-keys"><kbd>←</kbd> <kbd>→</kbd></div><span>Previous / next observation date</span></div>
+          <div class="shortcut-row"><div class="shortcut-keys"><kbd>↑</kbd> <kbd>↓</kbd></div><span>Select previous / next asteroid in explorer</span></div>
+          <div class="shortcut-row"><div class="shortcut-keys"><kbd>R</kbd></div><span>Reset camera view to Earth</span></div>
+          <div class="shortcut-row"><div class="shortcut-keys"><kbd>M</kbd></div><span>Toggle procedural space audio hum</span></div>
+          <div class="shortcut-row"><div class="shortcut-keys"><kbd>S</kbd></div><span>Toggle satellite swarm point cloud</span></div>
+          <div class="shortcut-row"><div class="shortcut-keys"><kbd>Esc</kbd></div><span>Close active drawer / deselect</span></div>
+        </div>
+        <div class="help-section">
+          <h3>Planetary Defense Standards</h3>
+          <p><b>Potentially Hazardous Asteroid (PHA):</b> Official classification for asteroids with Minimum Orbit Intersection Distance (MOID) $\le 0.05\text{ AU}$ ($\approx 7,480,000\text{ km}$) and absolute magnitude $H \le 22.0$ (roughly $\ge 140\text{ m}$). It implies close monitoring, not an inevitable collision.</p>
+          <p><b>Lunar Distance (LD):</b> The mean distance from the center of Earth to the Moon ($384,400\text{ km}$).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ HOVER TOOLTIP ═══ -->
+  <div id="tooltip" role="tooltip" aria-hidden="true"></div>
+
+  <!-- ═══ MODULAR APPLICATION ENTRY POINT ═══ -->
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
