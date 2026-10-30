@@ -1,48 +1,65 @@
-// Every tracked satellite in orbit, live — CelesTrak TLEs propagated in-browser
-// with satellite.js. ISRO birds get their own saffron layer. 🇮🇳
+// ==========================================================================
+// Satellite Swarm Tracker
+// Real tracked satellites via CelesTrak TLEs propagated with satellite.js.
+// ==========================================================================
+
 import * as THREE from "three";
 
 const INDIA_RE = /(INSAT|GSAT|CARTOSAT|RISAT|IRNSS|NVS-|ASTROSAT|OCEANSAT|RESOURCESAT|EOS-\d|EMISAT|SARAL|SCATSAT|MEGHA|KALPANA|IRS-|HAMSAT|MICROSAT|ANUSAT|YOUTHSAT|CHANDRAYAAN|ADITYA|XPOSAT|GISAT|CMS-\d|DS-SAR|PRATHAM|SROSS|ROHINI|APPLE|BHASKARA|ARYABHATA|AZAADISAT|ANAND|SINDHU|VELOX|INS-\d)/i;
 
-const CHUNK = 700; // satellites re-propagated per frame (round-robin)
+const CHUNK = 700; // Satellites re-propagated per frame (round-robin)
 
 export async function initSwarm(scene, EARTH_R) {
   if (!window.satellite) return null;
 
-  // --- fetch TLEs (cached per day) ---
+  // --- Fetch TLEs (cached per day) ---
   let text = null;
   const key = "tle-" + new Date().toISOString().slice(0, 10);
-  try { text = localStorage.getItem(key); } catch (_) {}
+  try {
+    text = localStorage.getItem(key);
+  } catch (_) {}
+
   if (!text) {
-    const res = await fetch("https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle");
-    if (!res.ok) throw new Error("celestrak " + res.status);
-    text = await res.text();
     try {
-      // keep quota sane: drop older TLE caches first
-      Object.keys(localStorage).filter((k) => k.startsWith("tle-") && k !== key)
-        .forEach((k) => localStorage.removeItem(k));
-      localStorage.setItem(key, text);
-    } catch (_) {}
+      const res = await fetch("https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle");
+      if (!res.ok) throw new Error("CelesTrak " + res.status);
+      text = await res.text();
+      try {
+        // Keep quota sane: drop older TLE caches first
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith("tle-") && k !== key)
+          .forEach((k) => localStorage.removeItem(k));
+        localStorage.setItem(key, text);
+      } catch (_) {}
+    } catch (err) {
+      console.warn("[OrbitWatch] Satellite TLE fetch failed:", err.message);
+      return null;
+    }
   }
 
-  // --- parse ---
+  if (!text) return null;
+
+  // --- Parse TLE lines ---
   const lines = text.split("\n").map((l) => l.trimEnd()).filter(Boolean);
   const sats = [];
   const india = [];
-  for (let i = 0; i + 2 < lines.length + 1; i += 3) {
+
+  for (let i = 0; i + 2 < lines.length; i += 3) {
     const name = lines[i];
-    const l1 = lines[i + 1], l2 = lines[i + 2];
+    const l1 = lines[i + 1];
+    const l2 = lines[i + 2];
     if (!l1 || !l2 || l1[0] !== "1" || l2[0] !== "2") continue;
     try {
       const rec = window.satellite.twoline2satrec(l1, l2);
       (INDIA_RE.test(name) ? india : sats).push({ name, rec });
     } catch (_) {}
   }
+
   if (!sats.length) return null;
 
   const UNIT = EARTH_R / 6371; // km → scene units
 
-  // soft round glow sprite so points aren't hard squares
+  // Soft round glow sprite so points are not hard square pixels
   const dotCv = document.createElement("canvas");
   dotCv.width = dotCv.height = 32;
   const dctx = dotCv.getContext("2d");
@@ -59,8 +76,14 @@ export async function initSwarm(scene, EARTH_R) {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
     const mat = new THREE.PointsMaterial({
-      color, size, transparent: true, opacity, map: dotTex,
-      blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+      color,
+      size,
+      transparent: true,
+      opacity,
+      map: dotTex,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
     });
     const points = new THREE.Points(geo, mat);
     points.frustumCulled = false;
@@ -81,17 +104,17 @@ export async function initSwarm(scene, EARTH_R) {
       try {
         const p = window.satellite.propagate(cloud.list[i].rec, now).position;
         if (p) {
-          // ECI (z-up) → scene (y-up)
+          // ECI (z-up) → Three.js scene (y-up)
           arr[i * 3] = p.x * UNIT;
           arr[i * 3 + 1] = p.z * UNIT;
           arr[i * 3 + 2] = -p.y * UNIT;
         }
-      } catch (_) { /* decayed / bad TLE — leave parked far away */ }
+      } catch (_) {}
     }
     cloud.geo.attributes.position.needsUpdate = true;
   }
 
-  // initial full pass so the swarm pops in complete
+  // Initial full pass
   propagate(main, sats.length);
   propagate(desi, india.length);
 
@@ -99,11 +122,13 @@ export async function initSwarm(scene, EARTH_R) {
     counts: { total: sats.length + india.length, india: india.length },
     update() {
       propagate(main, CHUNK);
-      propagate(desi, india.length); // ours stay perfectly live
+      propagate(desi, india.length);
     },
-    setVisible(v) { main.points.visible = v; desi.points.visible = v; },
+    setVisible(v) {
+      main.points.visible = v;
+      desi.points.visible = v;
+    },
     setIndiaFocus(v) {
-      // dim the world's satellites so India's shine
       main.mat.opacity = v ? 0.05 : 0.42;
       desi.mat.size = v ? 0.5 : 0.3;
     },
