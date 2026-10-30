@@ -1,0 +1,45 @@
+MIT License
+
+Copyright (c) 2026 Orbit Watch Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+### Third-Party Data and Open-Source Acknowledgments
+
+This software integrates data, mathematical models, and open-source libraries
+from the following authoritative scientific and engineering sources:
+
+1. **NASA Near-Earth Object Web Service (NeoWs)**: Near-Earth object orbital
+   parameters, miss distances, and physical estimates provided by NASA / JPL
+   under the NASA Open Innovation and Open Data Policy.
+2. **NASA Planetary Defense Coordination Office & CNEOS / JPL SSD**: Fireball
+   bolide reports and Sentry collision monitoring records courtesy of NASA JPL.
+3. **CelesTrak**: Satellite two-line element sets (TLEs) provided courtesy of
+   Dr. T.S. Kelso and CelesTrak.
+4. **Three.js**: 3D WebGL rendering engine under MIT License (Copyright (c)
+   2010-2026 Three.js authors).
+5. **satellite.js**: SGP4/SDP4 satellite orbit propagation under MIT License
+   (Copyright (c) Shashwat Kandadai).
+6. **astronomy-engine**: Planetary position calculations under MIT License
+   (Copyright (c) Don Cross).
+7. **Leaflet**: Interactive cartographic display under BSD 2-Clause License
+   (Copyright (c) Vladimir Agafonkin).
+
