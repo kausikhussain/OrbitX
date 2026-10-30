@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Orbit Watch — double-click to launch locally
+# ECLIPTARA — double-click to launch locally on macOS
 cd "$(dirname "$0")"
 open "http://localhost:4173"
-python3 -m http.server 4173
+node server.js

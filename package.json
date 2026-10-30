@@ -1,0 +1,31 @@
+{
+  "name": "ecliptara",
+  "version": "2.0.0",
+  "description": "Ecliptara — Ultra-Premium Space Situational Awareness & Near-Earth Object Intelligence Platform",
+  "type": "module",
+  "main": "js/main.js",
+  "scripts": {
+    "start": "node server.js",
+    "serve": "node server.js",
+    "test": "node tests/run.js",
+    "verify": "node tests/run.js",
+    "lint": "node --check js/main.js js/api/nasa.js js/api/jpl.js js/api/celestrak.js js/api/launches.js js/astronomy/calculations.js js/astronomy/impact-physics.js js/astronomy/encounter.js",
+    "build": "node -e \"console.log('[Ecliptara] Native ES modules and Import Maps: no bundling build required.')\""
+  },
+  "keywords": [
+    "space-intelligence",
+    "astronomy",
+    "near-earth-objects",
+    "asteroid-tracker",
+    "nasa-api",
+    "threejs",
+    "webgl",
+    "planetary-defense",
+    "sgp4",
+    "satellites",
+    "impact-physics"
+  ],
+  "author": "Ecliptara Team",
+  "license": "MIT"
+}
+
